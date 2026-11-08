@@ -38,9 +38,9 @@
 /* упражнение — отдельный блок */
 .ex{background:var(--bg-2);border:1px solid var(--line);border-radius:14px;padding:10px 12px 12px 14px}
 .ex-h{display:flex;gap:6px;align-items:center}
-.ex-name{flex:1;min-width:0;height:38px;border:0;border-bottom:1px solid transparent;background:transparent;font-weight:600;font-size:17px;padding:0;border-radius:0}
+.ex-name{flex:1;min-width:0;height:38px;border:0;border-bottom:1px solid transparent;background:transparent;font-weight:600;font-size:17px;padding:0;border-radius:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .ex-name:focus{border-bottom-color:var(--line-2);outline:none}
-.kind{height:38px;flex:1;min-width:0;border:0;background:transparent;font-weight:600;font-size:17px}
+.kind{height:38px;flex:1;min-width:0;border:0;background:transparent;font-weight:600;font-size:17px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .icon{flex:none;width:36px;height:36px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:18px;line-height:1}
 .icon.more{font-size:20px;letter-spacing:1px}
 .icon.more.on,.icon:active{background:var(--raise);color:var(--ink)}
@@ -119,3 +119,6 @@
 .ex.folded{padding-bottom:10px}
 .ex.folded .ex-name{color:var(--ink-2)}
 @media (max-width:360px){.ex-cnt{font-size:10.5px}}
+
+/* длинные названия — с многоточием, а не обрезаны посередине */
+.pk-name{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}

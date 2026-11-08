@@ -69,6 +69,8 @@ on('changed',scheduleRender);
 on('profile',weightChanged=>{if(isEditorOpen()){if(weightChanged)refreshEditor(false)}else scheduleRender()});
 
 /* ---------- нажатия ---------- */
+/* Пустой обработчик касаний нужен Safari на iPhone, чтобы подсветка :active работала, пока палец прижат. */
+document.addEventListener('touchstart',()=>{},{passive:true});
 let exArm=0;
 document.addEventListener('click',e=>{
   if(e.target.id==='pf'){closeProfile();return}

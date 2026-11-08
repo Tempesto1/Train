@@ -23,7 +23,7 @@ function renderScale(){
     if(!st.done)statsH=isCur?'ещё ничего не записано':'—';
     h+='<button class="sw'+(isCur?' cur':'')+(st.done?' has':'')+'" data-week="'+wk.key+'" aria-label="Неделя '+fmtWeekNo(wk.num)+', '+rangeLabel(wk.mon,ty)+'">'
       +'<span class="sw-num">'+fmtWeekNo(wk.num)+'</span><span class="sw-r">'+ticks+'</span>'
-      +'<span class="sw-i"><span class="sw-range">'+rangeLabel(wk.mon,ty)+(isCur?'<span class="tag">сейчас</span>':'')+(wk.num<1?'<span class="tag pre">до начала</span>':'')+'</span><span class="sw-g">'+groups+'</span><span class="sw-s">'+statsH+'</span></span>'
+      +'<span class="sw-i"><span class="sw-range"><span class="rt">'+rangeLabel(wk.mon,ty)+'</span>'+(isCur?'<span class="tag">сейчас</span>':'')+(wk.num<1?'<span class="tag pre">до начала</span>':'')+'</span><span class="sw-g">'+groups+'</span><span class="sw-s">'+statsH+'</span></span>'
       +'<span class="sw-go">›</span></button>';
   });
   $('#scale').innerHTML=h;

@@ -224,8 +224,8 @@ function renderPicker(){
       return '<button class="pk-row t-'+t+(t===d.type?' cur':'')+'" data-act="set-type" data-type="'+t+'"'+(why?' disabled':'')+'><span class="pl"></span><span>'+TYPES[t].name+'</span>'+(t===d.type?'<span class="pk-note">сейчас</span>':why?'<span class="pk-note">'+why+'</span>':'')+'</button>'}).join('')
       +'<button class="pk-row pk-del" data-act="del-session"><span>Удалить тренировку</span></button>';
   }
-  else if(m==='cardio'){title='Добавить кардио';rows=Object.keys(CK).map(k=>'<button class="pk-row" data-act="add-cardio" data-kind="'+k+'"><span>'+CK[k].name+'</span><span class="pk-plus">+</span></button>').join('')}
-  else{title=MUS[m].name;rows=suggestions(m,d).map(n=>'<button class="pk-row" data-act="add-ex" data-m="'+m+'" data-name="'+esc(n)+'"><span>'+esc(n)+'</span>'+(isBwName(n)?'<span class="badge">свой вес</span>':'')+'<span class="pk-plus">+</span></button>').join('')}
+  else if(m==='cardio'){title='Добавить кардио';rows=Object.keys(CK).map(k=>'<button class="pk-row" data-act="add-cardio" data-kind="'+k+'"><span class="pk-name">'+CK[k].name+'</span><span class="pk-plus">+</span></button>').join('')}
+  else{title=MUS[m].name;rows=suggestions(m,d).map(n=>'<button class="pk-row" data-act="add-ex" data-m="'+m+'" data-name="'+esc(n)+'"><span class="pk-name">'+esc(n)+'</span>'+(isBwName(n)?'<span class="badge">свой вес</span>':'')+'<span class="pk-plus">+</span></button>').join('')}
   p.innerHTML='<button class="pk-bg" data-act="pick-close" aria-label="Закрыть список"></button><div class="pk-panel" role="dialog" aria-label="'+esc(title)+'"><div class="pk-h"><h3>'+esc(title)+'</h3><button class="tbtn" data-act="pick-close">Закрыть</button></div>'
     +'<div class="pk-list">'+(rows||'<p class="pk-empty">Все упражнения из списка уже добавлены.</p>')+'</div>'
     +(m==='cardio'||m==='type'?'':'<div class="pk-custom"><input class="inp" id="customEx" placeholder="Своё упражнение" autocomplete="off"><button class="btn" data-act="add-custom" data-m="'+m+'">Добавить</button></div>')+'</div>';

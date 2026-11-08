@@ -2,8 +2,10 @@
 .scale-head{flex-basis:100%;display:grid;grid-template-columns:52px 46px minmax(0,1fr);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding-top:6px}
 .scale-head span:last-child{padding-left:14px}
 .sw{position:relative;display:grid;grid-template-columns:52px 46px minmax(0,1fr) 18px;width:100%;height:calc(var(--day) * 7);text-align:left;border-bottom:1px solid var(--line)}
-.sw:hover{background:var(--bg-2)}
-.sw:active{background:var(--raise)}
+/* Подсветка: мышью — при наведении, пальцем — только пока он прижат (на телефоне :hover «залипал» после касания). */
+.sw{transition:background-color .15s}
+@media (hover:hover){.sw:hover{background:var(--bg-2)}}
+.sw:active{background:var(--raise);transition:none}
 .sw-num{align-self:end;font-family:var(--f-display);font-weight:700;font-size:46px;line-height:.78;padding-bottom:7px;color:var(--ink-3);font-variant-numeric:tabular-nums}
 .sw.has .sw-num{color:var(--ink-2)}
 .sw.cur .sw-num{color:var(--ink)}
@@ -23,3 +25,5 @@
 .sw-go{align-self:end;padding-bottom:10px;color:var(--ink-3);font-size:18px;line-height:1}
 .scale-foot{padding-block:14px 30px;font-size:12px;color:var(--ink-3)}
 .tag.pre{background:transparent;color:var(--ink-3);box-shadow:inset 0 0 0 1px var(--line-2)}
+.sw-range .rt{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.sw-s,.sw-range{min-width:0}
