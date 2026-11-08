@@ -1,8 +1,9 @@
 // Экран недели: день-линейка и тренировочные дни с упражнениями.
 import {$,esc,ymd,parseYmd,addDays,isoWeek,weekMonday,num,z,fmtN,fmtTon,norm,rangeLabel,MG,WD} from '../util.js';
 import {TYPES,ORDER,MUS,MUS_ORDER,CK,FIELD} from '../config.js';
+import {infoBtn} from './info.js';
 import {S,curKey} from '../state.js';
-import {sess,weekStats,buildIndex,bestOf,compare,cardioDelta,cardioSum,prevBefore,muscleOf,fmtTop,isEmpty,weekNo,startKey} from '../model.js';
+import {sess,weekStats,buildIndex,bestOf,compare,cardioDelta,cardioSum,prevBefore,muscleOf,fmtTop,isEmpty,weekNo,fmtWeekNo,firstKey} from '../model.js';
 
 function liftsHTML(s,key,idx){
   const T=TYPES[s.type];let h='';
@@ -23,12 +24,12 @@ function renderWeek(dir){
   const key=S.week,mon=weekMonday(key),idx=buildIndex(),ck=curKey(),todayS=ymd(S.today),ty=S.today.getFullYear();
   const prevKey=isoWeek(addDays(mon,-7)).key,nextKey=isoWeek(addDays(mon,7)).key,isCur=key===ck;
   const st=weekStats(key,idx),pst=weekStats(prevKey,idx);
-  const atFirst=key<=startKey(),atLast=key>=ck;
-  let h='<header class="bar"><button class="tbtn" data-go="scale">‹ Шкала</button><div class="navs"><button class="tbtn" data-week="'+prevKey+'" data-dir="-1" aria-label="Предыдущая неделя"'+(atFirst?' disabled':'')+'>‹'+(atFirst?'':' '+weekNo(prevKey))+'</button><button class="tbtn" data-week="'+nextKey+'" data-dir="1" aria-label="Следующая неделя"'+(atLast?' disabled':'')+'>'+(atLast?'':weekNo(nextKey)+' ')+'›</button></div></header><div class="wk-slide" id="wkSlide">';
+  const atFirst=key<=firstKey(),atLast=key>=ck;
+  let h='<header class="bar"><button class="tbtn" data-go="scale">‹ Шкала</button><div class="navs"><button class="tbtn" data-week="'+prevKey+'" data-dir="-1" aria-label="Предыдущая неделя"'+(atFirst?' disabled':'')+'>‹'+(atFirst?'':' '+fmtWeekNo(weekNo(prevKey)))+'</button><button class="tbtn" data-week="'+nextKey+'" data-dir="1" aria-label="Следующая неделя"'+(atLast?' disabled':'')+'>'+(atLast?'':fmtWeekNo(weekNo(nextKey))+' ')+'›</button>'+infoBtn('week')+'</div></header><div class="wk-slide" id="wkSlide">';
   const cmp=[st.done+' из 4 тренировок'];
   if(st.ton){let t='совокупность весов <span class="mono">'+fmtTon(st.ton)+'</span>';if(pst.ton){const d=st.ton-pst.ton;if(Math.abs(d)>=50)t+=' <span class="mono '+(d>0?'up':'down')+'">'+(d>0?'▲ +':'▼ −')+fmtTon(Math.abs(d))+'</span>'}cmp.push(t)}
   if(st.up||st.down)cmp.push('к прошлому разу: <span class="up">▲'+st.up+'</span>'+(st.down?' <span class="down">▼'+st.down+'</span>':''));
-  h+='<div class="wk-hero"><div class="wk-big"><small>неделя</small>'+weekNo(key)+'</div><div class="wk-side"><div class="wk-range">'+rangeLabel(mon,ty)+(isCur?'<span class="tag">сейчас</span>':'')+'</div><div class="wk-cmp">'+cmp.map(c=>'<span>'+c+'</span>').join('')+'</div></div></div>';
+  h+='<div class="wk-hero"><div class="wk-big"><small>'+(weekNo(key)>=1?'неделя':'до начала')+'</small>'+fmtWeekNo(weekNo(key))+'</div><div class="wk-side"><div class="wk-range">'+rangeLabel(mon,ty)+(isCur?'<span class="tag">сейчас</span>':'')+'</div><div class="wk-cmp">'+cmp.map(c=>'<span>'+c+'</span>').join('')+'</div></div></div>';
   const marks={};ORDER.forEach(t=>{const s=sess(key,t);if(s&&s.date)(marks[s.date]=marks[s.date]||[]).push(t)});
   h+='<div class="hr" aria-hidden="true">';
   for(let i=0;i<7;i++){const d=addDays(mon,i),k=ymd(d);h+='<div class="'+(k===todayS?'today':k>todayS?'fut':'')+'"><span>'+WD[i]+'</span><span class="dn">'+d.getDate()+'</span><span class="pls">'+(marks[k]||[]).map(t=>'<span class="pl t-'+t+'"></span>').join('')+'</span></div>'}
@@ -47,7 +48,7 @@ function renderWeek(dir){
   });
   h+='</div>';
   if(S.loaded&&![...S.sessions.values()].some(s=>!isEmpty(s)))h+='<p class="hint"><b>Начните с сегодняшней тренировки.</b> Нажмите на день и запишите подходы. Со следующей недели рядом с каждым упражнением появится прошлый результат и стрелка роста.</p>';
-  h+='<p class="swipe-hint">Листайте недели свайпом влево и вправо</p></div>';
+  h+='</div>';
   $('#weekView').innerHTML=h;
   /* dir: 1 — пришли на следующую неделю (въезжает справа), -1 — на предыдущую (слева). */
   if(dir&&!matchMedia('(prefers-reduced-motion: reduce)').matches){

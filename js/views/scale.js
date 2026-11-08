@@ -1,8 +1,8 @@
 // Главный экран: вертикальная шкала недель.
-import {$,ymd,addDays,fmtN,fmtTon,rangeLabel,weekMonday,MG} from '../util.js';
+import {$,ymd,addDays,fmtN,fmtTon,rangeLabel} from '../util.js';
 import {TYPES,ORDER} from '../config.js';
 import {S,P,curKey} from '../state.js';
-import {sess,weekStats,buildIndex,weeksList,weekNo,startKey} from '../model.js';
+import {sess,weekStats,buildIndex,weeksList,weekNo,fmtWeekNo} from '../model.js';
 
 function renderScale(){
   const weeks=weeksList(),idx=buildIndex(),ck=curKey(),todayS=ymd(S.today),ty=S.today.getFullYear();
@@ -21,19 +21,18 @@ function renderScale(){
     const stats=[];if(st.done)stats.push(st.done+'/4');if(st.ton)stats.push(fmtTon(st.ton));
     let statsH=stats.join(' · ');if(st.up)statsH+=' <span class="up">▲'+st.up+'</span>';if(st.down)statsH+=' <span class="down">▼'+st.down+'</span>';
     if(!st.done)statsH=isCur?'ещё ничего не записано':'—';
-    h+='<button class="sw'+(isCur?' cur':'')+(st.done?' has':'')+'" data-week="'+wk.key+'" aria-label="Неделя '+wk.num+', '+rangeLabel(wk.mon,ty)+'">'
-      +'<span class="sw-num">'+wk.num+'</span><span class="sw-r">'+ticks+'</span>'
-      +'<span class="sw-i"><span class="sw-range">'+rangeLabel(wk.mon,ty)+(isCur?'<span class="tag">сейчас</span>':'')+'</span><span class="sw-g">'+groups+'</span><span class="sw-s">'+statsH+'</span></span>'
+    h+='<button class="sw'+(isCur?' cur':'')+(st.done?' has':'')+'" data-week="'+wk.key+'" aria-label="Неделя '+fmtWeekNo(wk.num)+', '+rangeLabel(wk.mon,ty)+'">'
+      +'<span class="sw-num">'+fmtWeekNo(wk.num)+'</span><span class="sw-r">'+ticks+'</span>'
+      +'<span class="sw-i"><span class="sw-range">'+rangeLabel(wk.mon,ty)+(isCur?'<span class="tag">сейчас</span>':'')+(wk.num<1?'<span class="tag pre">до начала</span>':'')+'</span><span class="sw-g">'+groups+'</span><span class="sw-s">'+statsH+'</span></span>'
       +'<span class="sw-go">›</span></button>';
   });
   $('#scale').innerHTML=h;
   let n='';
-  const exWeeks=[...new Set([...S.sessions.values()].filter(s=>s.example).map(s=>weekNo(s.week)))].sort((a,b)=>a-b);
+  const exWeeks=[...new Set([...S.sessions.values()].filter(s=>s.example).map(s=>weekNo(s.week)))].sort((a,b)=>a-b).map(fmtWeekNo);
   if(S.pLoaded&&P.weight==null)n+='<div class="note"><p>Укажите свой вес и возраст. Вес нужен для подтягиваний, брусьев и других упражнений с собственным весом.</p><button class="lnk" data-act="profile">Указать</button></div>';
-  if(exWeeks.length)n+='<div class="note"><p>Недели '+exWeeks[0]+'–'+exWeeks[exWeeks.length-1]+' заполнены примерами.</p><button class="lnk" data-act="del-examples">Удалить примеры</button></div>';
+  if(exWeeks.length)n+='<div class="note"><p>Часть недель заполнена примерами.</p><button class="lnk" data-act="del-examples">Удалить примеры</button></div>';
   $('#notice').innerHTML=n;
-  const m1=weekMonday(startKey());
-  $('#scaleFoot').textContent='Неделя 1 началась '+m1.getDate()+' '+MG[m1.getMonth()]+(m1.getFullYear()!==ty?' '+m1.getFullYear():'')+'. Шкала идёт снизу вверх: деление — день, длинная метка — начало недели. Номер текущей недели можно поменять в «Мои данные».';
+  const cn=weekNo(ck);$('#wkBtn').innerHTML='Нед. <span class="mono">'+fmtWeekNo(cn)+'</span>';
   $('#pfBtn').innerHTML=P.weight!=null?'<span class="mono">'+fmtN(P.weight)+' кг</span>':'Мои данные';
 }
 

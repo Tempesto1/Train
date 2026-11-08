@@ -72,25 +72,29 @@ function weekStats(key,idx){
   return st;
 }
 /* ---------- нумерация недель ----------
-   Неделя 1 — та, что указана в «Мои данные» (P.start, ключ ISO-недели). Если не указана — неделя первой
-   записи, а без записей — текущая. Начало не бывает позже первой записи и позже текущей недели. */
+   Неделя 1 — та, что выбрана в «Счёт недель» (P.start, ключ ISO-недели). Если не выбрана — неделя первой
+   записи, а без записей — текущая. Выбор свободный: записи раньше недели 1 остаются и показываются
+   как «до начала» (номер ≤ 0). */
 const DAY=86400000;
 function weekDiff(a,b){return Math.round((weekMonday(b)-weekMonday(a))/(7*DAY))}
 function earliestWeek(){let e=null;for(const s of S.sessions.values()){if(!isEmpty(s)&&(!e||s.week<e))e=s.week}return e}
 function startKey(){
-  const ck=isoWeek(S.today).key,first=earliestWeek();
-  let st=P.start&&/^\d{4}-W\d{2}$/.test(P.start)?P.start:(first||ck);
-  if(first&&first<st)st=first;
+  const ck=isoWeek(S.today).key;
+  let st=P.start&&/^\d{4}-W\d{2}$/.test(P.start)?P.start:(earliestWeek()||ck);
   if(st>ck)st=ck;
   return st;
 }
+/* Самая ранняя неделя на шкале: неделя 1 или более ранняя запись. */
+function firstKey(){const st=startKey(),e=earliestWeek();return e&&e<st?e:st}
 const weekNo=key=>weekDiff(startKey(),key)+1;
+/* Подпись номера: для недель до начала — «–». */
+const fmtWeekNo=n=>n>=1?String(n):'–';
 /* Ключ недели, которая станет первой, если текущая неделя — номер n. */
 const startForNo=n=>isoWeek(addDays(mondayOf(S.today),-7*(n-1))).key;
 function weeksList(){
-  const st=weekMonday(startKey());const out=[];let m=mondayOf(S.today),n=weekDiff(startKey(),isoWeek(m).key)+1;
-  for(let i=0;i<520&&m>=st;i++){const iw=isoWeek(m);out.push({key:iw.key,num:n-i,year:iw.year,mon:m});m=addDays(m,-7)}
+  const first=weekMonday(firstKey());const out=[];let m=mondayOf(S.today);
+  for(let i=0;i<520&&m>=first;i++){const iw=isoWeek(m);out.push({key:iw.key,num:weekNo(iw.key),year:iw.year,mon:m});m=addDays(m,-7)}
   return out;
 }
 
-export {muscleOf,isBw,isBwName,bodyOfSet,extraOf,effW,bestOf,fmtTop,fmtSet,setsLine,cardioSum,isEmpty,sess,sortedSessions,buildIndex,prevBefore,compare,cardioDelta,weekStats,weeksList,weekDiff,earliestWeek,startKey,weekNo,startForNo};
+export {muscleOf,isBw,isBwName,bodyOfSet,extraOf,effW,bestOf,fmtTop,fmtSet,setsLine,cardioSum,isEmpty,sess,sortedSessions,buildIndex,prevBefore,compare,cardioDelta,weekStats,weeksList,weekDiff,earliestWeek,startKey,firstKey,weekNo,fmtWeekNo,startForNo};

@@ -1,6 +1,6 @@
 // Создаётся tools/build.js — руками не править.
 // Сначала сеть (чтобы обновления приходили сразу), без сети или при долгом ответе — кэш.
-const C='rv-c6baad3db4';
+const C='rv-15d3e4f341';
 const CORE=[
  "./",
  "./css/base.css",
@@ -24,10 +24,12 @@ const CORE=[
  "./js/util.js",
  "./js/views/charts.js",
  "./js/views/editor.js",
+ "./js/views/info.js",
  "./js/views/profile.js",
  "./js/views/progress.js",
  "./js/views/scale.js",
  "./js/views/week.js",
+ "./js/views/weeks.js",
  "./manifest.webmanifest"
 ];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});

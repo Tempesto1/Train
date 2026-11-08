@@ -3,6 +3,10 @@
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent;
   padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
 html,body{overscroll-behavior-y:none}
+/* Страница никогда не шире экрана: иначе iOS уменьшает масштаб всей страницы (во время свайпа неделя
+   на миг выходит за край), и текст после этого остаётся размытым. */
+html{overflow-x:hidden}
+.view{overflow-x:clip}
 body.locked{position:fixed;left:0;right:0;overflow:hidden}
 body::before{content:"";position:fixed;inset:0 0 auto;height:var(--sat);z-index:10;background:var(--bg)}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -59,3 +63,9 @@ textarea.inp{height:auto;min-height:64px;padding:10px;resize:vertical}
 .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line-2)}
 .btn.danger{background:transparent;color:var(--down);border:1px solid color-mix(in srgb, var(--down) 50%, transparent)}
 .btn.danger.armed{background:var(--down);color:var(--bg)}
+
+/* кнопка «i» и окно с пояснением */
+.ibtn{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--line-2);border-radius:50%;font-family:var(--f-mono);font-weight:600;font-size:14px;color:var(--ink-2)}
+.ibtn:active{background:var(--bg-2)}
+.toast{display:flex;align-items:center;gap:14px}
+.toast-act{font-weight:700;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--bg);text-decoration:underline;text-underline-offset:3px}

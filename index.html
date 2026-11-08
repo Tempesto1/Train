@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>Рабочие веса</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <!-- pwa:start — только для версии-приложения, при сборке для claude.ai вырезается -->
@@ -36,21 +36,24 @@
   <header class="bar">
     <div><h1 class="logo">Рабочие веса</h1><span class="status" id="status">Загружаю…</span></div>
     <div class="bar-act">
+      <button class="tbtn" data-act="weeks" id="wkBtn" aria-label="Счёт недель">Нед.</button>
       <button class="tbtn" data-act="profile" id="pfBtn" aria-label="Мои данные: вес и возраст">Мои данные</button>
       <button class="tbtn" data-go="progress"><svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L5 6 L8 8 L13 1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Прогресс</button>
+      <button class="ibtn" data-act="info" data-info="scale" aria-label="Что здесь показано">i</button>
     </div>
     <div class="scale-head" aria-hidden="true"><span>нед.</span><span>дни</span><span>что сделано</span></div>
   </header>
   <div id="notice"></div>
   <div id="scale"></div>
-  <p class="scale-foot" id="scaleFoot"></p>
 </section>
 
 <section class="view" id="weekView" hidden aria-label="Неделя"></section>
 <section class="view" id="progressView" hidden aria-label="Прогресс"></section>
 
 <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-label="Тренировка"></div>
-<div class="ov" id="pf" hidden role="dialog" aria-modal="true" aria-labelledby="pfTitle"></div>
+<div class="ov" id="pf" hidden></div>
+<div class="ov" id="wk" hidden></div>
+<div class="ov ov-top" id="info" hidden></div>
 <div class="tip" id="tip" hidden></div>
 <div class="toast" id="toast" hidden></div>
 

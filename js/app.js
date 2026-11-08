@@ -3,7 +3,7 @@ import {$,ymd,addDays,isoWeek,weekMonday} from './util.js';
 import {S,P,curKey} from './state.js';
 import {on} from './bus.js';
 import {baseStatus,toast} from './ui.js';
-import {sortedSessions,startKey} from './model.js';
+import {sortedSessions,firstKey} from './model.js';
 import {loadCache,removeSession,restoreFrom,connect} from './store.js';
 import {renderScale} from './views/scale.js';
 import {renderWeek} from './views/week.js';
@@ -11,6 +11,8 @@ import {renderProgress} from './views/progress.js';
 import {hideTip} from './views/charts.js';
 import {openProfile,closeProfile,submitProfile} from './views/profile.js';
 import {openEditor,editorBack,flushEditor,isEditorOpen,refreshEditor,handleEditorClick} from './views/editor.js';
+import {openInfo,closeInfo,isInfoOpen} from './views/info.js';
+import {openWeeks,closeWeeks,weeksAction,isWeeksOpen} from './views/weeks.js';
 
 /* ---------- экраны ---------- */
 let rq=0;
@@ -30,7 +32,7 @@ function go(view,week){
    Свайп: неделя едет за пальцем; если протянуть дальше четверти экрана (или быстро смахнуть) —
    уезжает, а соседняя въезжает с другой стороны. Стрелки в шапке делают тот же переход. */
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
-const canGo=dir=>dir>0?S.week<curKey():S.week>startKey();
+const canGo=dir=>dir>0?S.week<curKey():S.week>firstKey();
 function switchWeek(k,dir){S.week=k;window.scrollTo(0,0);hideTip();renderWeek(dir);baseStatus()}
 function slideTo(k,dir){
   const el=$('#wkSlide');
@@ -74,6 +76,10 @@ document.addEventListener('click',e=>{
   if(t.dataset.open)return openEditor(t.dataset.open);
   if(t.dataset.range){S.range=t.dataset.range==='all'?'all':+t.dataset.range;return renderProgress()}
   const act=t.dataset.act;if(!act)return;
+  if(act==='info')return openInfo(t.dataset.info);
+  if(act==='info-close')return closeInfo();
+  if(act==='weeks')return openWeeks();
+  if(weeksAction(act))return;
   if(act==='profile')return openProfile();
   if(act==='pf-cancel')return closeProfile();
   if(act==='pf-save'){if(submitProfile()){if(isEditorOpen())refreshEditor(true);else scheduleRender()}return}
@@ -93,7 +99,7 @@ document.addEventListener('click',e=>{
   handleEditorClick(act,t);
 });
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){if(!$('#pf').hidden)closeProfile();else if(isEditorOpen())editorBack();else if(S.view!=='scale')go('scale')}
+  if(e.key==='Escape'){if(isInfoOpen())closeInfo();else if(isWeeksOpen())closeWeeks();else if(!$('#pf').hidden)closeProfile();else if(isEditorOpen())editorBack();else if(S.view!=='scale')go('scale')}
   if(e.key==='Enter'&&e.target.id==='customEx'){e.preventDefault();const b=document.querySelector('[data-act="add-custom"]');b&&b.click()}
 });
 

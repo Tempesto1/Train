@@ -2,11 +2,12 @@
 // Упражнения — отдельные блоки по группам мышц; второстепенные действия спрятаны в меню «⋯»;
 // новые упражнения добавляются через список («+ Упражнение»). Подходы и блоки появляются и исчезают плавно.
 import {$,esc,ymd,addDays,weekMonday,num,z,fmtN,fmtIn,norm,clone,uid} from '../util.js';
-import {TYPES,MUS,LIB,LIBMAP,DEFAULT_PICK,CK,FIELD,STEP} from '../config.js';
+import {TYPES,ORDER,MUS,LIB,LIBMAP,DEFAULT_PICK,CK,FIELD,STEP} from '../config.js';
 import {S,P} from '../state.js';
 import {emit} from '../bus.js';
 import {toast} from '../ui.js';
-import {muscleOf,isBw,isBwName,extraOf,effW,bestOf,setsLine,isEmpty,sortedSessions,buildIndex,prevBefore,compare,cardioDelta,weekNo} from '../model.js';
+import {muscleOf,isBw,isBwName,extraOf,effW,bestOf,setsLine,isEmpty,sortedSessions,buildIndex,prevBefore,compare,cardioDelta,weekNo,fmtWeekNo} from '../model.js';
+import {infoBtn} from './info.js';
 import {commitSession,removeSession} from '../store.js';
 
 /* Открытая тренировка: {doc, dirty, timer, idx, armed, showOpt, menu, picker, anim, busy} */
@@ -23,6 +24,31 @@ function suggestions(m,doc){
   return out.slice(0,14);
 }
 function newEx(name,muscle){return{id:uid(),name,muscle,bw:isBwName(name),sets:[]}}
+/* Заполнить новую тренировку упражнениями прошлого такого же дня (без подходов) или упражнениями по умолчанию. */
+function prefill(doc){
+  const type=doc.type,T=TYPES[type];
+  const prev=sortedSessions().filter(s=>s.type===type&&s.week<doc.week&&!isEmpty(s)).pop();
+  delete doc.exercises;delete doc.cardio;
+  if(T.kind==='strength'){
+    if(prev)doc.exercises=prev.exercises.filter(e=>!T.opt.includes(muscleOf(e,type))).map(e=>({id:uid(),name:e.name,muscle:muscleOf(e,type),bw:isBw(e),sets:[]}));
+    else{doc.exercises=[];DEFAULT_PICK[type].forEach(([m,n])=>LIB[m].slice(0,n).forEach(x=>doc.exercises.push(newEx(x[0],m))))}
+  }else doc.cardio=(prev&&prev.cardio&&prev.cardio.length?prev.cardio.map(c=>c.kind):['treadmill']).map(k=>({id:uid(),kind:k}));
+}
+/* Есть ли в тренировке вписанные цифры (заметка не считается). */
+function hasEntries(d){return !isEmpty(Object.assign({},d,{note:''}))}
+/* Сменить день, если ошиблись: без цифр — подставить упражнения нового дня, с цифрами (силовая → силовая) — оставить как есть. */
+function switchType(nt){
+  const d=E.doc,old=d.id,filled=hasEntries(d);
+  d.type=nt;d.id=d.week+'_'+nt;
+  if(!filled)prefill(d);
+  (d.exercises||[]).forEach(e=>{e.muscle=muscleOf(e,nt)});
+  if(S.sessions.has(old))removeSession(old);
+  E.showOpt={};E.menu=null;
+  $('#sheet').className='sheet t-'+nt;renderTitle();
+  E.anim={sel:'.msec'};touch();renderEditor();
+  toast('День изменён: '+TYPES[nt].name);
+}
+function renderTitle(){const el=$('#edTitle');if(el)el.innerHTML='<span class="pl"></span><h2>'+TYPES[E.doc.type].short+'</h2><span class="caret" aria-hidden="true">▾</span>'}
 function touch(){if(!E)return;E.dirty=true;clearTimeout(E.timer);E.timer=setTimeout(flushEditor,700);editorSave('…')}
 function flushEditor(){
   if(!E||!E.dirty)return;E.dirty=false;clearTimeout(E.timer);
@@ -71,33 +97,34 @@ function openEditor(id){
   if(doc)doc=clone(doc);
   else{
     const mon=weekMonday(wkKey),sun=addDays(mon,6);let date=ymd(S.today);if(date<ymd(mon)||date>ymd(sun))date=ymd(mon);
-    doc={id,week:wkKey,type,date,note:''};
-    const prev=sortedSessions().filter(s=>s.type===type&&s.week<wkKey&&!isEmpty(s)).pop();
-    if(T.kind==='strength'){
-      if(prev)doc.exercises=prev.exercises.filter(e=>!T.opt.includes(muscleOf(e,type))).map(e=>({id:uid(),name:e.name,muscle:muscleOf(e,type),bw:isBw(e),sets:[]}));
-      else{doc.exercises=[];DEFAULT_PICK[type].forEach(([m,n])=>LIB[m].slice(0,n).forEach(x=>doc.exercises.push(newEx(x[0],m))))}
-    }else doc.cardio=(prev&&prev.cardio&&prev.cardio.length?prev.cardio.map(c=>c.kind):['treadmill']).map(k=>({id:uid(),kind:k}));
+    doc={id,week:wkKey,type,date,note:''};prefill(doc);
   }
   (doc.exercises||[]).forEach(e=>{if(!e.id)e.id=uid();e.sets=e.sets||[];e.muscle=muscleOf(e,type);e.bw=isBw(e)});
   (doc.cardio||[]).forEach(c=>{if(!c.id)c.id=uid()});
   E={doc,dirty:false,timer:null,idx:buildIndex(),armed:false,showOpt:{},menu:null,picker:null,anim:null,busy:false};
   const sh=$('#sheet');
+  sh.getAnimations().forEach(x=>x.cancel());sh.style.pointerEvents='';
   sh.className='sheet t-'+type;
-  sh.innerHTML='<header class="ed-top"><div class="ed-top-in"><button class="tbtn" data-act="close" aria-label="Назад к неделе">‹ Нед. '+weekNo(doc.week)+'</button>'
-    +'<div class="sheet-t"><span class="pl"></span><h2>'+T.short+'</h2></div><span class="save-state" id="saveState"></span></div></header>'
+  sh.innerHTML='<header class="ed-top"><div class="ed-top-in"><button class="tbtn" data-act="close" aria-label="Назад к неделе">‹ Нед. '+fmtWeekNo(weekNo(doc.week))+'</button>'
+    +'<button class="sheet-t" data-act="type-menu" id="edTitle" aria-label="Сменить день или удалить тренировку"></button><span class="save-state" id="saveState"></span>'+infoBtn('editor')+'</div></header>'
     +'<div class="ed-scroll" id="edScroll"><div class="ed-in" id="edIn"></div></div>'
     +'<footer class="ed-foot"><div class="ed-foot-in"><button class="btn done" data-act="done">Готово</button></div></footer>'
     +'<div class="picker" id="picker" hidden></div>';
-  renderEditor();
+  renderTitle();renderEditor();
   lockBody();sh.hidden=false;fitSheet();
   if(!reduced())sh.animate([{opacity:0,transform:'translateY(28px)'},{opacity:1,transform:'none'}],{duration:260,easing:EASE});
 }
 function closeEditor(){
   if(!E)return;flushEditor();E=null;
   const sh=$('#sheet');
-  const hide=()=>{sh.hidden=true;sh.innerHTML='';sh.style.height='';sh.style.top=''};
+  /* Анимацию закрытия обязательно снять после скрытия: с fill:'forwards' она остаётся на элементе
+     и при следующем открытии снова делает экран прозрачным (невидимым, но нажимаемым). */
+  const blur=document.activeElement;if(blur&&sh.contains(blur))blur.blur();
+  sh.style.pointerEvents='none';
+  let a=null;
+  const hide=()=>{if(a)a.cancel();sh.hidden=true;sh.innerHTML='';sh.style.height='';sh.style.top='';sh.style.pointerEvents=''};
   unlockBody();emit('changed');
-  if(reduced())hide();else sh.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(28px)'}],{duration:170,easing:'ease-in',fill:'forwards'}).finished.then(hide,hide);
+  if(reduced())hide();else{a=sh.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(28px)'}],{duration:170,easing:'ease-in',fill:'forwards'});a.finished.then(hide,hide)}
 }
 /* «Назад» (Escape): сначала закрыть список выбора, потом сам экран. */
 function editorBack(){if(!E)return;if(E.picker){E.picker=null;renderPicker();return}closeEditor()}
@@ -150,7 +177,7 @@ function renderEditor(){
     T.opt.forEach(m=>{if(!ms.includes(m))h+='<button class="optbtn" data-act="show-opt" data-m="'+m+'"><span class="pl '+MUS[m].c+'"></span>+ '+MUS[m].name+' сегодня</button>'});
   }else{
     h+='<section class="msec t-cardio"><div class="ex-list">'+(d.cardio||[]).map(cardioCardHTML).join('')+'</div>';
-    h+='<button class="add-ex" data-act="pick" data-m="cardio">+ Тренажёр</button><p class="c-note">Пустые поля считаются нулём: пульс или наклон можно не вписывать.</p></section>';
+    h+='<button class="add-ex" data-act="pick" data-m="cardio">+ Тренажёр</button></section>';
   }
   h+='<div class="ed-bottom"><label class="lbl">Заметка<textarea class="inp" id="sessNote" rows="2" placeholder="Самочувствие, сон, что поменять в следующий раз">'+esc(d.note||'')+'</textarea></label>';
   if(S.sessions.has(d.id))h+='<button class="lnk-del" data-act="del-session" id="delSess">Удалить тренировку</button>';
@@ -162,11 +189,19 @@ function renderPicker(){
   const p=$('#picker');if(!p)return;
   if(!E||!E.picker){if(!p.hidden){const panel=p.querySelector('.pk-panel');const hide=()=>{p.hidden=true;p.innerHTML=''};if(panel&&!reduced())panel.animate([{transform:'none'},{transform:'translateY(100%)'}],{duration:160,easing:'ease-in',fill:'forwards'}).finished.then(hide,hide);else hide()}return}
   const m=E.picker,d=E.doc;let title,rows;
-  if(m==='cardio'){title='Добавить кардио';rows=Object.keys(CK).map(k=>'<button class="pk-row" data-act="add-cardio" data-kind="'+k+'"><span>'+CK[k].name+'</span><span class="pk-plus">+</span></button>').join('')}
+  if(m==='type'){
+    const filled=hasEntries(d);
+    title='День тренировки';
+    rows=ORDER.map(t=>{const busy=t!==d.type&&!isEmpty(S.sessions.get(d.week+'_'+t));const kindLock=t!==d.type&&filled&&TYPES[t].kind!==TYPES[d.type].kind;
+      const why=busy?'уже записан':kindLock?'сначала очистите подходы':'';
+      return '<button class="pk-row t-'+t+(t===d.type?' cur':'')+'" data-act="set-type" data-type="'+t+'"'+(why?' disabled':'')+'><span class="pl"></span><span>'+TYPES[t].name+'</span>'+(t===d.type?'<span class="pk-note">сейчас</span>':why?'<span class="pk-note">'+why+'</span>':'')+'</button>'}).join('')
+      +'<button class="pk-row pk-del" data-act="del-session"><span>Удалить тренировку</span></button>';
+  }
+  else if(m==='cardio'){title='Добавить кардио';rows=Object.keys(CK).map(k=>'<button class="pk-row" data-act="add-cardio" data-kind="'+k+'"><span>'+CK[k].name+'</span><span class="pk-plus">+</span></button>').join('')}
   else{title=MUS[m].name;rows=suggestions(m,d).map(n=>'<button class="pk-row" data-act="add-ex" data-m="'+m+'" data-name="'+esc(n)+'"><span>'+esc(n)+'</span>'+(isBwName(n)?'<span class="badge">свой вес</span>':'')+'<span class="pk-plus">+</span></button>').join('')}
   p.innerHTML='<button class="pk-bg" data-act="pick-close" aria-label="Закрыть список"></button><div class="pk-panel" role="dialog" aria-label="'+esc(title)+'"><div class="pk-h"><h3>'+esc(title)+'</h3><button class="tbtn" data-act="pick-close">Закрыть</button></div>'
     +'<div class="pk-list">'+(rows||'<p class="pk-empty">Все упражнения из списка уже добавлены.</p>')+'</div>'
-    +(m==='cardio'?'':'<div class="pk-custom"><input class="inp" id="customEx" placeholder="Своё упражнение" autocomplete="off"><button class="btn" data-act="add-custom" data-m="'+m+'">Добавить</button></div>')+'</div>';
+    +(m==='cardio'||m==='type'?'':'<div class="pk-custom"><input class="inp" id="customEx" placeholder="Своё упражнение" autocomplete="off"><button class="btn" data-act="add-custom" data-m="'+m+'">Добавить</button></div>')+'</div>';
   const was=p.hidden;p.hidden=false;
   if(was&&!reduced()){p.querySelector('.pk-panel').animate([{transform:'translateY(100%)'},{transform:'none'}],{duration:240,easing:EASE});p.querySelector('.pk-bg').animate([{opacity:0},{opacity:1}],{duration:200})}
 }
@@ -197,9 +232,13 @@ function handleEditorClick(act,t){
   }
   if(act==='add-cardio'){const c={id:uid(),kind:t.dataset.kind};d.cardio.push(c);E.picker=null;renderPicker();E.anim={sel:'[data-ex="'+c.id+'"]'};touch();renderEditor();return}
   if(act==='del-session'){
-    if(!E.armed){E.armed=true;t.classList.add('armed');t.textContent='Нажмите ещё раз, чтобы удалить';setTimeout(()=>{if(E&&E.armed){E.armed=false;const b=$('#delSess');if(b){b.classList.remove('armed');b.textContent='Удалить тренировку'}}},3500);return}
-    removeSession(d.id);E.dirty=false;closeEditor();toast('Тренировка удалена');return;
+    /* Без подтверждения: удаляем сразу, а в сообщении даём «Вернуть». */
+    const was=S.sessions.get(d.id);const back=was?clone(was):null;
+    if(was)removeSession(d.id);E.dirty=false;E.picker=null;closeEditor();
+    toast(back?'Тренировка удалена':'Тренировка не сохранена',back?{label:'Вернуть',fn:()=>commitSession(back)}:null);return;
   }
+  if(act==='type-menu'){E.picker='type';E.menu=null;renderPicker();return}
+  if(act==='set-type'){const nt=t.dataset.type;E.picker=null;renderPicker();if(nt!==d.type)switchType(nt);return}
   const f=findEx(t);if(!f||!f.item)return;const item=f.item;
   if(act==='menu'){E.menu=E.menu===item.id?null:item.id;const open=E.menu===item.id;renderEditor();if(open){const m=$('#edIn').querySelector('[data-ex="'+item.id+'"] .ex-menu');animateIn(m)}return}
   if(act==='del-ex'){E.menu=null;animateOut(f.card,()=>{if(!E)return;f.list.splice(f.list.indexOf(item),1);touch();renderEditor()});return}
