@@ -66,24 +66,26 @@ function editorSave(t){const el=document.getElementById('saveState');if(!el)retu
 /* ---------- экран закреплён по размеру видимой области (учитывая клавиатуру) ---------- */
 let lockY=0;
 function lockBody(){lockY=window.scrollY;document.body.style.top=-lockY+'px';document.body.classList.add('locked')}
-function unlockBody(){document.body.classList.remove('locked');document.body.style.top='';window.scrollTo(0,lockY)}
-/* Клавиатура. Экран не двигаем вслед за iOS (из-за этого всё дёргалось): он стоит на месте,
-   а когда клавиатура открыта — становится ниже ровно на её высоту, и iOS незачем сдвигать страницу.
-   Реагируем только на смену размера (открыть/закрыть клавиатуру), не на каждую прокрутку. */
-let fitRaf=0;
+function unlockBody(){document.body.classList.remove('locked','ed-open');document.body.style.top='';window.scrollTo(0,lockY);lastKb=false}
+/* Клавиатура. Экран записи занимает ровно видимую область: высота = высоте над клавиатурой, верх = сдвигу,
+   который iOS делает при фокусе на поле (visualViewport.offsetTop). Пересчёт — не чаще раза за кадр
+   и только если что-то изменилось. Страницы под экраном на это время скрыты (body.ed-open),
+   поэтому в любой момент сдвига видно только фон, а не неделю. */
+let fitRaf=0,lastKb=false;
 function fitSheet(){
   if(fitRaf)return;
   fitRaf=requestAnimationFrame(()=>{
     fitRaf=0;const sh=$('#sheet'),vv=window.visualViewport;if(!sh||sh.hidden||!vv)return;
-    if(window.scrollY)window.scrollTo(0,0); /* страница под экраном закреплена, сдвиг iOS только мешает */
     const kb=vv.height<window.innerHeight-120;
     sh.classList.toggle('kb',kb);
-    const h=kb?Math.round(vv.height)+'px':'';
+    const h=kb?Math.round(vv.height)+'px':'',top=kb?Math.max(0,Math.round(vv.offsetTop))+'px':'';
     if(sh.style.height!==h)sh.style.height=h;
-    if(kb)keepFocusVisible();
+    if(sh.style.top!==top)sh.style.top=top;
+    if(kb&&!lastKb)keepFocusVisible();
+    lastKb=kb;
   });
 }
-if(window.visualViewport)visualViewport.addEventListener('resize',fitSheet);
+if(window.visualViewport){visualViewport.addEventListener('resize',fitSheet);visualViewport.addEventListener('scroll',fitSheet)}
 /* Поле, в которое пишут, держим видимым, прокручивая только середину экрана — и только если оно спряталось. */
 function keepFocusVisible(){
   const el=document.activeElement,sc=$('#edScroll');if(!el||!sc||!sc.contains(el))return;
@@ -134,7 +136,9 @@ function openEditor(id){
     +'<div class="picker" id="picker" hidden></div>';
   renderTitle();renderEditor();
   lockBody();sh.hidden=false;
-  if(!reduced())sh.animate([{opacity:0,transform:'translateY(28px)'},{opacity:1,transform:'none'}],{duration:260,easing:EASE});
+  /* Страницы под экраном прячем, когда он уже полностью появился, — без резкой пустоты на старте. */
+  const hideUnder=()=>{if(E)document.body.classList.add('ed-open')};
+  if(!reduced())sh.animate([{opacity:0,transform:'translateY(28px)'},{opacity:1,transform:'none'}],{duration:260,easing:EASE}).finished.then(hideUnder,hideUnder);else hideUnder();
 }
 function closeEditor(){
   if(!E)return;flushEditor();E=null;
@@ -144,7 +148,7 @@ function closeEditor(){
   const blur=document.activeElement;if(blur&&sh.contains(blur))blur.blur();
   sh.style.pointerEvents='none';
   let a=null;
-  const hide=()=>{if(a)a.cancel();sh.hidden=true;sh.innerHTML='';sh.style.height='';sh.style.pointerEvents='';sh.classList.remove('kb')};
+  const hide=()=>{if(a)a.cancel();sh.hidden=true;sh.innerHTML='';sh.style.height='';sh.style.top='';sh.style.pointerEvents='';sh.classList.remove('kb')};
   unlockBody();emit('changed');
   if(reduced())hide();else{a=sh.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(28px)'}],{duration:170,easing:'ease-in',fill:'forwards'});a.finished.then(hide,hide)}
 }
@@ -316,6 +320,7 @@ document.addEventListener('change',e=>{
   if(t.classList.contains('ex-name')&&f){if(!f.item.sets.length){const l=LIBMAP.get(norm(f.item.name));if(l)f.item.bw=l.bw}renderEditor();return}
   if(t.classList.contains('kind')&&f){f.item.kind=t.value;touch();renderEditor()}
 });
-document.addEventListener('focusin',e=>{if(E&&e.target.matches('#edIn input, #edIn textarea'))setTimeout(keepFocusVisible,350)});
+/* Переход между полями при уже открытой клавиатуре: подкрутить середину, если поле спряталось. */
+document.addEventListener('focusin',e=>{if(E&&lastKb&&e.target.matches('#edIn input, #edIn textarea'))setTimeout(keepFocusVisible,60)});
 
 export {openEditor,closeEditor,editorBack,flushEditor,isEditorOpen,refreshEditor,handleEditorClick};

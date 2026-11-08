@@ -8,6 +8,8 @@ html,body{overscroll-behavior-y:none}
 html{overflow-x:hidden}
 .view{overflow-x:clip}
 body.locked{position:fixed;left:0;right:0;overflow:hidden}
+/* Пока открыт экран записи, страницы под ним не рисуются: при сдвиге от клавиатуры не должно ничего просвечивать. */
+body.ed-open .view{visibility:hidden}
 body::before{content:"";position:fixed;inset:0 0 auto;height:var(--sat);z-index:10;background:var(--bg)}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:0;padding:0}
