@@ -7,7 +7,7 @@ import {setStatus,baseStatus,toast} from './ui.js';
 
 function loadCache(){
   try{const raw=localStorage.getItem(CACHE);if(raw){const arr=JSON.parse(raw);if(Array.isArray(arr))arr.forEach(d=>{if(d&&d.id)S.sessions.set(d.id,d)})}}catch(e){}
-  try{const p=JSON.parse(localStorage.getItem(PCACHE)||'null');if(p&&typeof p==='object')Object.assign(P,{weight:num(p.weight),age:num(p.age)})}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem(PCACHE)||'null');if(p&&typeof p==='object')Object.assign(P,readProfile(p))}catch(e){}
 }
 function saveCache(){try{localStorage.setItem(CACHE,JSON.stringify([...S.sessions.values()]))}catch(e){}}
 function savePCache(){try{localStorage.setItem(PCACHE,JSON.stringify(P))}catch(e){}}
@@ -40,9 +40,11 @@ function removeSession(id){
   S.sessions.delete(id);saveCache();emit('changed');
   if(S.mode==='db'&&!S.readOnly)queueWrite(id,()=>S.db.collection('sessions').doc(id).delete());
 }
-function saveProfile(weight,age){
-  Object.assign(P,{weight,age});savePCache();S.pLoaded=true;
-  if(S.mode==='db'&&!S.readOnly)queueWrite('profile',()=>S.db.doc('profile/me').set({weight,age,updatedAt:new Date().toISOString()}));
+/* Профиль: вес тела, возраст и start — ключ ISO-недели, которая считается неделей 1 (null — считать автоматически). */
+const readProfile=p=>({weight:num(p.weight),age:num(p.age),start:typeof p.start==='string'&&/^\d{4}-W\d{2}$/.test(p.start)?p.start:null});
+function saveProfile(weight,age,start){
+  Object.assign(P,{weight,age,start:start||null});savePCache();S.pLoaded=true;
+  if(S.mode==='db'&&!S.readOnly)queueWrite('profile',()=>S.db.doc('profile/me').set({weight,age,start:start||null,updatedAt:new Date().toISOString()}));
 }
 
 async function restoreFrom(text){
@@ -51,7 +53,7 @@ async function restoreFrom(text){
   if(!list){toast('В тексте нет тренировок');return}
   const ok=list.filter(s=>s&&typeof s==='object'&&/^\d{4}-W\d{2}$/.test(s.week||'')&&TYPES[s.type]).map(s=>{const d=clone(s);d.id=s.week+'_'+s.type;return d});
   ok.forEach(d=>S.sessions.set(d.id,d));saveCache();emit('changed');
-  const pr=data&&data.profile;if(pr&&num(pr.weight)!=null)saveProfile(num(pr.weight),num(pr.age));
+  const pr=data&&data.profile;if(pr&&typeof pr==='object'&&(num(pr.weight)!=null||pr.start)){const q=readProfile(pr);saveProfile(q.weight,q.age,q.start)}
   toast('Восстановлено тренировок: '+ok.length);
   if(S.mode==='db'&&!S.readOnly)for(const d of ok){await runWrite(()=>S.db.collection('sessions').doc(d.id).set(bodyOf(d)))}
 }
@@ -71,7 +73,7 @@ async function connect(){
   },err=>{clearTimeout(timer);S.loaded=true;setStatus('Хранилище недоступно','warn')});
   db.doc('profile/me').onSnapshot(snap=>{
     const old=P.weight;
-    if(snap.exists){const p=snap.data();Object.assign(P,{weight:num(p.weight),age:num(p.age)});savePCache()}
+    if(snap.exists){Object.assign(P,readProfile(snap.data()));savePCache()}
     if(!snap.metadata.fromCache||snap.exists)S.pLoaded=true;
     emit('profile',old!==P.weight);
   },()=>{S.pLoaded=true});

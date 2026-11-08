@@ -10,6 +10,8 @@
   --f-body:"Golos Text",-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
   --day:18px;
+  /* Отступы под вырез экрана: «чёлка» (iPhone 11–14) или «островок» (14 Pro и новее) — значения даёт сам iOS. */
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
   color-scheme:dark;
 }
 @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){

@@ -1,6 +1,6 @@
 // Модель упражнений и расчёты: лучший подход, сравнение с прошлым разом, недели.
 import {num,z,fmtN,norm,addDays,mondayOf,isoWeek,weekMonday} from './util.js';
-import {MUS,TYPES,ORDER,LIBMAP,FIELD,MIN_WEEKS} from './config.js';
+import {MUS,TYPES,ORDER,LIBMAP,FIELD} from './config.js';
 import {S,P} from './state.js';
 
 function muscleOf(e,type){if(e.muscle&&MUS[e.muscle])return e.muscle;const l=LIBMAP.get(norm(e.name));if(l)return l.muscle;const T=TYPES[type];return T&&T.muscles[0]||'chest'}
@@ -71,12 +71,26 @@ function weekStats(key,idx){
   });
   return st;
 }
+/* ---------- нумерация недель ----------
+   Неделя 1 — та, что указана в «Мои данные» (P.start, ключ ISO-недели). Если не указана — неделя первой
+   записи, а без записей — текущая. Начало не бывает позже первой записи и позже текущей недели. */
+const DAY=86400000;
+function weekDiff(a,b){return Math.round((weekMonday(b)-weekMonday(a))/(7*DAY))}
+function earliestWeek(){let e=null;for(const s of S.sessions.values()){if(!isEmpty(s)&&(!e||s.week<e))e=s.week}return e}
+function startKey(){
+  const ck=isoWeek(S.today).key,first=earliestWeek();
+  let st=P.start&&/^\d{4}-W\d{2}$/.test(P.start)?P.start:(first||ck);
+  if(first&&first<st)st=first;
+  if(st>ck)st=ck;
+  return st;
+}
+const weekNo=key=>weekDiff(startKey(),key)+1;
+/* Ключ недели, которая станет первой, если текущая неделя — номер n. */
+const startForNo=n=>isoWeek(addDays(mondayOf(S.today),-7*(n-1))).key;
 function weeksList(){
-  const cur=mondayOf(S.today);let earliest=addDays(cur,-7*(MIN_WEEKS-1));
-  for(const s of S.sessions.values()){const m=weekMonday(s.week);if(m&&m<earliest)earliest=m}
-  const out=[];let m=cur;
-  for(let i=0;i<520&&m>=earliest;i++){const iw=isoWeek(m);out.push({key:iw.key,num:iw.num,year:iw.year,mon:m});m=addDays(m,-7)}
+  const st=weekMonday(startKey());const out=[];let m=mondayOf(S.today),n=weekDiff(startKey(),isoWeek(m).key)+1;
+  for(let i=0;i<520&&m>=st;i++){const iw=isoWeek(m);out.push({key:iw.key,num:n-i,year:iw.year,mon:m});m=addDays(m,-7)}
   return out;
 }
 
-export {muscleOf,isBw,isBwName,bodyOfSet,extraOf,effW,bestOf,fmtTop,fmtSet,setsLine,cardioSum,isEmpty,sess,sortedSessions,buildIndex,prevBefore,compare,cardioDelta,weekStats,weeksList};
+export {muscleOf,isBw,isBwName,bodyOfSet,extraOf,effW,bestOf,fmtTop,fmtSet,setsLine,cardioSum,isEmpty,sess,sortedSessions,buildIndex,prevBefore,compare,cardioDelta,weekStats,weeksList,weekDiff,earliestWeek,startKey,weekNo,startForNo};

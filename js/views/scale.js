@@ -1,8 +1,8 @@
 // Главный экран: вертикальная шкала недель.
-import {$,ymd,addDays,fmtN,fmtTon,rangeLabel,wnum} from '../util.js';
+import {$,ymd,addDays,fmtN,fmtTon,rangeLabel,weekMonday,MG} from '../util.js';
 import {TYPES,ORDER} from '../config.js';
 import {S,P,curKey} from '../state.js';
-import {sess,weekStats,buildIndex,weeksList} from '../model.js';
+import {sess,weekStats,buildIndex,weeksList,weekNo,startKey} from '../model.js';
 
 function renderScale(){
   const weeks=weeksList(),idx=buildIndex(),ck=curKey(),todayS=ymd(S.today),ty=S.today.getFullYear();
@@ -28,10 +28,12 @@ function renderScale(){
   });
   $('#scale').innerHTML=h;
   let n='';
-  const exWeeks=[...new Set([...S.sessions.values()].filter(s=>s.example).map(s=>wnum(s.week)))].sort((a,b)=>a-b);
+  const exWeeks=[...new Set([...S.sessions.values()].filter(s=>s.example).map(s=>weekNo(s.week)))].sort((a,b)=>a-b);
   if(S.pLoaded&&P.weight==null)n+='<div class="note"><p>Укажите свой вес и возраст. Вес нужен для подтягиваний, брусьев и других упражнений с собственным весом.</p><button class="lnk" data-act="profile">Указать</button></div>';
   if(exWeeks.length)n+='<div class="note"><p>Недели '+exWeeks[0]+'–'+exWeeks[exWeeks.length-1]+' заполнены примерами.</p><button class="lnk" data-act="del-examples">Удалить примеры</button></div>';
   $('#notice').innerHTML=n;
+  const m1=weekMonday(startKey());
+  $('#scaleFoot').textContent='Неделя 1 началась '+m1.getDate()+' '+MG[m1.getMonth()]+(m1.getFullYear()!==ty?' '+m1.getFullYear():'')+'. Шкала идёт снизу вверх: деление — день, длинная метка — начало недели. Номер текущей недели можно поменять в «Мои данные».';
   $('#pfBtn').innerHTML=P.weight!=null?'<span class="mono">'+fmtN(P.weight)+' кг</span>':'Мои данные';
 }
 

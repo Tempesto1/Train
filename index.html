@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <script>window.STANDALONE=true;</script>
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>:root{padding-top:var(--sat);padding-bottom:var(--sab)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
 <!-- pwa:end -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,11 +39,11 @@
       <button class="tbtn" data-act="profile" id="pfBtn" aria-label="Мои данные: вес и возраст">Мои данные</button>
       <button class="tbtn" data-go="progress"><svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M1 11 L5 6 L8 8 L13 1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Прогресс</button>
     </div>
+    <div class="scale-head" aria-hidden="true"><span>нед.</span><span>дни</span><span>что сделано</span></div>
   </header>
   <div id="notice"></div>
-  <div class="scale-head" aria-hidden="true"><span>нед.</span><span>дни</span><span>что сделано</span></div>
   <div id="scale"></div>
-  <p class="scale-foot">Шкала идёт снизу вверх: каждое деление — день, длинная метка — начало недели. Нажмите на неделю, чтобы открыть её.</p>
+  <p class="scale-foot" id="scaleFoot"></p>
 </section>
 
 <section class="view" id="weekView" hidden aria-label="Неделя"></section>

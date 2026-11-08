@@ -1,8 +1,8 @@
 // Экран прогресса: совокупность весов по группам мышц, упражнения, кардио.
-import {$,esc,wnum,fmtN,fmtTon,plural} from '../util.js';
+import {$,esc,fmtN,fmtTon,plural} from '../util.js';
 import {MUS,MUS_ORDER,CK} from '../config.js';
 import {S,P,curKey} from '../state.js';
-import {buildIndex,weeksList,prevBefore,compare,fmtTop} from '../model.js';
+import {buildIndex,weeksList,prevBefore,compare,fmtTop,weekNo} from '../model.js';
 import {sparkSVG,barsSVG} from './charts.js';
 
 function renderProgress(){
@@ -28,7 +28,7 @@ function renderProgress(){
     h+='<div class="prows">';
     rows.forEach((r,ri)=>{
       const perWeek=new Map();r.inR.forEach(e=>{const p=perWeek.get(e.week);if(!p||e.top>p.top||(e.top===p.top&&e.topReps>p.topReps))perWeek.set(e.week,e)});
-      const pts=[...perWeek.values()].map(e=>({i:pos.get(e.week),v:e.top,label:'нед. '+wnum(e.week)+' · '+fmtTop(e)+' × '+e.topReps+(e.bw?' ('+fmtN(e.top)+' кг)':'')}));
+      const pts=[...perWeek.values()].map(e=>({i:pos.get(e.week),v:e.top,label:'нед. '+weekNo(e.week)+' · '+fmtTop(e)+' × '+e.topReps+(e.bw?' ('+fmtN(e.top)+' кг)':'')}));
       const cmp=compare(r.last,prevBefore(r.list,r.last.week));
       const gain=r.last.top-perWeek.get(r.inR[0].week).top;
       const sub=[];if(r.last.bw&&P.weight!=null)sub.push('всего '+fmtN(r.last.top)+' кг');else if(r.last.e1rm)sub.push('≈1ПМ '+Math.round(r.last.e1rm)+' кг');if(pts.length>1&&gain)sub.push((gain>0?'+':'')+fmtN(gain)+' кг за период');if(!sub.length)sub.push(pts.length+' '+plural(pts.length,'неделя','недели','недель'));
@@ -44,7 +44,7 @@ function renderProgress(){
     h+='<h2 class="sec-t t-cardio"><span class="pl"></span>Кардио<span class="tot">'+(cmin.get(ck)?fm(cmin.get(ck)):'')+'</span></h2><p class="sec-sub">Минуты кардио по неделям. Невписанные поля считаются нулём</p><div class="chart t-cardio">'+barsSVG('cmin',ser(cmin),ck,fm,120)+'</div><div class="prows">';
     crow.forEach((r,ri)=>{
       const perWeek=new Map();r.inR.forEach(e=>{const p=perWeek.get(e.week)||{week:e.week,min:0,km:0,m:0,speed:0};p.min+=e.min;p.km+=e.km;p.m+=e.m;p.speed=Math.max(p.speed,e.speed);perWeek.set(e.week,p)});
-      const pw=[...perWeek.values()];const pts=pw.map(e=>({i:pos.get(e.week),v:e.min,label:'нед. '+wnum(e.week)+' · '+fmtN(e.min)+' мин'+(e.km?' · '+fmtN(e.km)+' км':'')}));
+      const pw=[...perWeek.values()];const pts=pw.map(e=>({i:pos.get(e.week),v:e.min,label:'нед. '+weekNo(e.week)+' · '+fmtN(e.min)+' мин'+(e.km?' · '+fmtN(e.km)+' км':'')}));
       const last=pw[pw.length-1],before=pw[pw.length-2];const dm=before?Math.round((last.min-before.min)*100)/100:null;
       const sub=[];if(last.km)sub.push(fmtN(last.km)+' км');if(last.m)sub.push(last.m+' м');if(last.speed)sub.push(fmtN(last.speed)+' км/ч');if(!sub.length)sub.push('минут за неделю');
       h+='<div class="prow"><div style="min-width:0"><div class="prow-name">'+esc((CK[r.k]||CK.other).name)+'</div><div class="prow-sub">'+sub.join(' · ')+'</div></div>'+sparkSVG('c'+ri,pts,n,'t-cardio')+'<div class="prow-val"><div class="v">'+fmtN(last.min)+' мин</div><span class="delta '+(dm==null?'same':dm>0?'up':dm<0?'down':'same')+'">'+(dm==null?'первый раз':dm>0?'▲ +'+fmtN(dm)+' мин':dm<0?'▼ '+fmtN(dm)+' мин':'=')+'</span></div></div>';

@@ -3,14 +3,14 @@ import {$,ymd,addDays,isoWeek,weekMonday} from './util.js';
 import {S,P,curKey} from './state.js';
 import {on} from './bus.js';
 import {baseStatus,toast} from './ui.js';
-import {sortedSessions} from './model.js';
+import {sortedSessions,startKey} from './model.js';
 import {loadCache,removeSession,restoreFrom,connect} from './store.js';
 import {renderScale} from './views/scale.js';
 import {renderWeek} from './views/week.js';
 import {renderProgress} from './views/progress.js';
 import {hideTip} from './views/charts.js';
 import {openProfile,closeProfile,submitProfile} from './views/profile.js';
-import {openEditor,closeEditor,flushEditor,isEditorOpen,refreshEditor,handleEditorClick} from './views/editor.js';
+import {openEditor,editorBack,flushEditor,isEditorOpen,refreshEditor,handleEditorClick} from './views/editor.js';
 
 /* ---------- экраны ---------- */
 let rq=0;
@@ -26,12 +26,38 @@ function go(view,week){
   if(view==='scale')window.scrollTo(0,from==='scale'?window.scrollY:S.scaleY);else window.scrollTo(0,0);
 }
 
-/* Свайп влево/вправо на экране недели листает недели. */
+/* ---------- переход между неделями ----------
+   Свайп: неделя едет за пальцем; если протянуть дальше четверти экрана (или быстро смахнуть) —
+   уезжает, а соседняя въезжает с другой стороны. Стрелки в шапке делают тот же переход. */
+const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+const canGo=dir=>dir>0?S.week<curKey():S.week>startKey();
+function switchWeek(k,dir){S.week=k;window.scrollTo(0,0);hideTip();renderWeek(dir);baseStatus()}
+function slideTo(k,dir){
+  const el=$('#wkSlide');
+  if(!el||reduced()){switchWeek(k,dir);return}
+  el.animate([{transform:'none',opacity:1},{transform:'translateX('+(-dir*40)+'%)',opacity:0}],{duration:150,easing:'ease-in',fill:'forwards'}).finished.then(()=>switchWeek(k,dir));
+}
 (function(){
-  let sx=0,sy=0,t0=0;const v=$('#weekView');
-  v.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;t0=Date.now()},{passive:true});
-  v.addEventListener('touchend',e=>{const t=e.changedTouches[0];const dx=t.clientX-sx,dy=t.clientY-sy;if(Date.now()-t0>600||Math.abs(dx)<70||Math.abs(dy)>Math.abs(dx)*0.6)return;
-    const k=isoWeek(addDays(weekMonday(S.week),dx<0?7:-7)).key;if(dx<0&&k>curKey())return;go('week',k)},{passive:true});
+  const v=$('#weekView');let sx=0,sy=0,t0=0,lock=null,el=null,dx=0;
+  v.addEventListener('touchstart',e=>{if(e.touches.length>1){el=null;return}const t=e.touches[0];sx=t.clientX;sy=t.clientY;t0=Date.now();lock=null;dx=0;el=$('#wkSlide')},{passive:true});
+  v.addEventListener('touchmove',e=>{
+    if(!el)return;const t=e.touches[0],mx=t.clientX-sx,my=t.clientY-sy;
+    if(lock===null){if(Math.abs(mx)<8&&Math.abs(my)<8)return;lock=Math.abs(mx)>Math.abs(my)*1.2?'x':'y'}
+    if(lock!=='x')return;
+    e.preventDefault();
+    dx=canGo(mx<0?1:-1)?mx:mx/4; /* дальше первой и текущей недели — тугое сопротивление */
+    el.style.transition='none';el.style.transform='translateX('+dx+'px)';el.style.opacity=String(1-Math.min(.45,Math.abs(dx)/700));
+  },{passive:false});
+  const end=()=>{
+    if(!el)return;const cur=el;el=null;if(lock!=='x')return;
+    const w=v.clientWidth,dir=dx<0?1:-1,quick=Date.now()-t0<300&&Math.abs(dx)>40;
+    if((Math.abs(dx)>w*0.25||quick)&&canGo(dir)){
+      const k=isoWeek(addDays(weekMonday(S.week),dir*7)).key;
+      cur.style.transition='transform .16s ease-in, opacity .16s ease-in';cur.style.transform='translateX('+(-dir*w)+'px)';cur.style.opacity='0';
+      setTimeout(()=>switchWeek(k,dir),160);
+    }else{cur.style.transition='transform .22s cubic-bezier(.2,.8,.2,1), opacity .22s';cur.style.transform='';cur.style.opacity=''}
+  };
+  v.addEventListener('touchend',end);v.addEventListener('touchcancel',end);
 })();
 
 /* ---------- события от хранилища ---------- */
@@ -44,7 +70,7 @@ document.addEventListener('click',e=>{
   if(e.target.id==='pf'){closeProfile();return}
   const t=e.target.closest('button');if(!t||t.disabled)return;
   if(t.dataset.go)return go(t.dataset.go);
-  if(t.dataset.week)return go('week',t.dataset.week);
+  if(t.dataset.week){if(S.view==='week'&&t.dataset.dir)return slideTo(t.dataset.week,+t.dataset.dir);return go('week',t.dataset.week)}
   if(t.dataset.open)return openEditor(t.dataset.open);
   if(t.dataset.range){S.range=t.dataset.range==='all'?'all':+t.dataset.range;return renderProgress()}
   const act=t.dataset.act;if(!act)return;
@@ -67,7 +93,7 @@ document.addEventListener('click',e=>{
   handleEditorClick(act,t);
 });
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){if(!$('#pf').hidden)closeProfile();else if(isEditorOpen())closeEditor();else if(S.view!=='scale')go('scale')}
+  if(e.key==='Escape'){if(!$('#pf').hidden)closeProfile();else if(isEditorOpen())editorBack();else if(S.view!=='scale')go('scale')}
   if(e.key==='Enter'&&e.target.id==='customEx'){e.preventDefault();const b=document.querySelector('[data-act="add-custom"]');b&&b.click()}
 });
 

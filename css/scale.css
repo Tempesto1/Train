@@ -1,5 +1,5 @@
 /* ---------- scale (home) ---------- */
-.scale-head{display:grid;grid-template-columns:52px 46px minmax(0,1fr);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding-block:14px 6px}
+.scale-head{flex-basis:100%;display:grid;grid-template-columns:52px 46px minmax(0,1fr);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding-top:6px}
 .scale-head span:last-child{padding-left:14px}
 .sw{position:relative;display:grid;grid-template-columns:52px 46px minmax(0,1fr) 18px;width:100%;height:calc(var(--day) * 7);text-align:left;border-bottom:1px solid var(--line)}
 .sw:hover{background:var(--bg-2)}
