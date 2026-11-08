@@ -1,52 +1,48 @@
-const fs=require('fs'),path=require('path');
-// Собирает версию для телефона из src/app.html в корень репозитория (или в папку из аргумента).
+// Сборка. Запуск: npm run build (один раз перед этим: npm install).
+//  1. sw.js — список файлов для работы без интернета и версия кэша (хэш содержимого).
+//  2. dist/artifact.html — вся версия одним файлом для артефакта на claude.ai:
+//     CSS встроен, JS склеен esbuild, блоки <!-- pwa:start -->…<!-- pwa:end --> вырезаны.
+const fs=require('fs'),path=require('path'),crypto=require('crypto');
 const ROOT=path.join(__dirname,'..');
-const src=fs.readFileSync(path.join(ROOT,'src','app.html'),'utf8');
-const cut=src.indexOf('</style>')+'</style>'.length;
-const headPart=src.slice(0,cut), bodyPart=src.slice(cut);
-const out=process.argv[2]?path.resolve(process.argv[2]):ROOT;fs.mkdirSync(path.join(out,'icons'),{recursive:true});
-const html=`<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Веса">
-<meta name="theme-color" content="#191C1F">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="icon" type="image/png" href="icons/icon-192.png">
-<script>window.STANDALONE=true;</script>
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
-${headPart}
-<style>body::before{background:#191C1F!important}</style>
-</head>
-<body>
-${bodyPart}
-<script>
-if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
-try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
-</script>
-</body>
-</html>
-`;
-fs.writeFileSync(path.join(out,'index.html'),html);
-fs.writeFileSync(path.join(out,'manifest.webmanifest'),JSON.stringify({
-  name:'Рабочие веса',short_name:'Веса',lang:'ru',start_url:'./',scope:'./',display:'standalone',
-  background_color:'#191C1F',theme_color:'#191C1F',
-  icons:[{src:'icons/icon-192.png',sizes:'192x192',type:'image/png'},{src:'icons/icon-512.png',sizes:'512x512',type:'image/png'},{src:'icons/icon-512.png',sizes:'512x512',type:'image/png',purpose:'maskable'}]
-},null,2));
-const ver=Date.now().toString(36);
-fs.writeFileSync(path.join(out,'sw.js'),`const C='rv-${ver}';
-const CORE=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'];
+const rel=p=>path.relative(ROOT,p).split(path.sep).join('/');
+const walk=d=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(d,e.name)):[path.join(d,e.name)]);
+
+/* ---------- 1. service worker ---------- */
+const assets=['index.html','manifest.webmanifest',
+  ...walk(path.join(ROOT,'css')).map(rel),
+  ...walk(path.join(ROOT,'js')).map(rel),
+  ...walk(path.join(ROOT,'icons')).map(rel)].filter(f=>/\.(html|webmanifest|css|js|png)$/.test(f)).sort();
+const hash=crypto.createHash('sha1');assets.forEach(f=>hash.update(f).update(fs.readFileSync(path.join(ROOT,f))));
+const ver=hash.digest('hex').slice(0,10);
+fs.writeFileSync(path.join(ROOT,'sw.js'),`// Создаётся tools/build.js — руками не править.
+// Сначала сеть (чтобы обновления приходили сразу), без сети или при долгом ответе — кэш.
+const C='rv-${ver}';
+const CORE=${JSON.stringify(['./',...assets.map(f=>'./'+f)],null,1)};
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
+function fromNet(r,key){
+  const same=new URL(r.url).origin===location.origin;
+  const net=fetch(same?new Request(r,{cache:'no-cache'}):r).then(res=>{if(res&&(res.ok||res.type==='opaque')){const cp=res.clone();caches.open(C).then(c=>c.put(key,cp))}return res});
+  const late=new Promise(ok=>setTimeout(ok,3500)).then(()=>caches.match(key)).then(hit=>hit||net);
+  return Promise.race([net,late]).catch(()=>caches.match(key));
+}
 self.addEventListener('fetch',e=>{
   const r=e.request;if(r.method!=='GET')return;
-  if(r.mode==='navigate'){e.respondWith(fetch(r).then(res=>{const cp=res.clone();caches.open(C).then(c=>c.put('./index.html',cp));return res}).catch(()=>caches.match('./index.html')));return}
-  e.respondWith(caches.match(r).then(hit=>hit||fetch(r).then(res=>{if(res&&(res.ok||res.type==='opaque')){const cp=res.clone();caches.open(C).then(c=>c.put(r,cp))}return res})));
+  e.respondWith(fromNet(r,r.mode==='navigate'?'./index.html':r).then(res=>res||caches.match(r)));
 });
 `);
-console.log('built',ver);
+
+/* ---------- 2. артефакт для claude.ai ---------- */
+let html=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
+html=html.replace(/<!-- pwa:start[\s\S]*?<!-- pwa:end -->\n?/g,'');
+const css=[];
+html=html.replace(/<link rel="stylesheet" href="(css\/[^"]+)">\n?/g,(m,f)=>{css.push(`/* ${f} */\n`+fs.readFileSync(path.join(ROOT,f),'utf8'));return css.length===1?'<!--CSS-->\n':''});
+html=html.replace('<!--CSS-->',`<style>\n${css.join('\n')}</style>`);
+const js=require('esbuild').buildSync({entryPoints:[path.join(ROOT,'js','app.js')],bundle:true,format:'iife',write:false,target:'es2019',charset:'utf8',legalComments:'none'}).outputFiles[0].text;
+html=html.replace('<script type="module" src="js/app.js"></script>',`<script>\n${js}</script>`);
+// Артефакт оборачивается в свой <html>/<head>/<body>: оставляем только содержимое.
+const head=html.match(/<head>([\s\S]*?)<\/head>/)[1].replace(/<meta charset[^>]*>\n?|<meta name="viewport"[^>]*>\n?/g,'').trim();
+const body=html.match(/<body>([\s\S]*?)<\/body>/)[1].trim();
+fs.mkdirSync(path.join(ROOT,'dist'),{recursive:true});
+fs.writeFileSync(path.join(ROOT,'dist','artifact.html'),head+'\n\n'+body+'\n');
+console.log('sw.js: '+assets.length+' файлов, версия '+ver+'\ndist/artifact.html: '+Math.round(fs.statSync(path.join(ROOT,'dist','artifact.html')).size/1024)+' КБ');

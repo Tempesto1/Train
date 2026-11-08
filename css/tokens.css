@@ -1,0 +1,24 @@
+/* Цвета, шрифты и темы. Тёмная тема — основная, светлая включается системной настройкой. */
+/* Layout: home = a vertical measuring scale (time runs upward; minor ticks = days, major ticks = ISO weeks).
+   Tapping a week band opens that week: big numeral, a horizontal day ruler, and the training days as weight plates. */
+:root{
+  --bg:#191C1F; --bg-2:#202428; --raise:#262B30; --ink:#EDEBE6; --ink-2:#B1B4B5; --ink-3:#7B8184;
+  --line:#2D3236; --line-2:#444A50;
+  --back:#5A7FE0; --legs:#DD5A48; --chest:#C9A12A; --cardio:#3E9E66;
+  --up:#57C98E; --down:#EF7666; --focus:#8FA8EE;
+  --f-display:"Alumni Sans","Arial Narrow","Roboto Condensed",sans-serif;
+  --f-body:"Golos Text",-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --day:18px;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --bg:#ECEAE4; --bg-2:#E2E0D9; --raise:#F7F6F2; --ink:#1A1D20; --ink-2:#4A4E52; --ink-3:#777B7E;
+  --line:#D2D0C9; --line-2:#B3B1AA;
+  --back:#2B5BD7; --legs:#D2402F; --chest:#B38A00; --cardio:#1D7A55;
+  --up:#0F7346; --down:#B23A2C; --focus:#2B5BD7; color-scheme:light}}
+:root[data-theme="light"]{
+  --bg:#ECEAE4; --bg-2:#E2E0D9; --raise:#F7F6F2; --ink:#1A1D20; --ink-2:#4A4E52; --ink-3:#777B7E;
+  --line:#D2D0C9; --line-2:#B3B1AA;
+  --back:#2B5BD7; --legs:#D2402F; --chest:#B38A00; --cardio:#1D7A55;
+  --up:#0F7346; --down:#B23A2C; --focus:#2B5BD7; color-scheme:light}

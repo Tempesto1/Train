@@ -1,0 +1,24 @@
+/* ---------- scale (home) ---------- */
+.scale-head{display:grid;grid-template-columns:52px 46px minmax(0,1fr);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding-block:14px 6px}
+.scale-head span:last-child{padding-left:14px}
+.sw{position:relative;display:grid;grid-template-columns:52px 46px minmax(0,1fr) 18px;width:100%;height:calc(var(--day) * 7);text-align:left;border-bottom:1px solid var(--line)}
+.sw:hover{background:var(--bg-2)}
+.sw:active{background:var(--raise)}
+.sw-num{align-self:end;font-family:var(--f-display);font-weight:700;font-size:46px;line-height:.78;padding-bottom:7px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.sw.has .sw-num{color:var(--ink-2)}
+.sw.cur .sw-num{color:var(--ink)}
+.sw-r{position:relative;border-right:2px solid var(--line-2)}
+.sw-r::after{content:"";position:absolute;right:-2px;bottom:-1px;width:26px;height:2px;background:var(--ink-3)}
+.tk{position:absolute;right:0;width:8px;height:1px;background:var(--line-2);transform:translateY(50%)}
+.tk.fut{opacity:.3}
+.tk.today{width:20px;height:2px;background:var(--ink)}
+.needle{position:absolute;right:-14px;width:0;height:0;border:6px solid transparent;border-right:8px solid var(--ink);transform:translateY(50%)}
+.mk{position:absolute;right:12px;display:flex;gap:2px;transform:translateY(50%)}
+.tk.today + .mk{right:24px}
+.sw-i{display:flex;flex-direction:column;justify-content:flex-end;gap:6px;padding:0 0 9px 16px;min-width:0}
+.sw-range{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;line-height:1.1;white-space:nowrap}
+.tag{flex:none;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--bg);background:var(--ink);padding:3px 5px 2px;border-radius:2px;line-height:1}
+.sw-g{display:flex;align-items:center;gap:5px}
+.sw-s{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sw-go{align-self:end;padding-bottom:10px;color:var(--ink-3);font-size:18px;line-height:1}
+.scale-foot{padding-block:14px 30px;font-size:12px;color:var(--ink-3)}

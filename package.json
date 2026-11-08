@@ -1,0 +1,12 @@
+{
+  "name": "rabochie-vesa",
+  "private": true,
+  "description": "Дневник тренировок «Рабочие веса»",
+  "scripts": {
+    "build": "node tools/build.js",
+    "icons": "node tools/icon.js"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.0"
+  }
+}
