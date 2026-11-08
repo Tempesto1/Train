@@ -34,6 +34,9 @@ function prefill(doc){
     else{doc.exercises=[];DEFAULT_PICK[type].forEach(([m,n])=>LIB[m].slice(0,n).forEach(x=>doc.exercises.push(newEx(x[0],m))))}
   }else doc.cardio=(prev&&prev.cardio&&prev.cardio.length?prev.cardio.map(c=>c.kind):['treadmill']).map(k=>({id:uid(),kind:k}));
 }
+/* Сколько подходов записано (есть повторы) и подпись к числу. */
+const doneSets=e=>(e.sets||[]).filter(st=>num(st.r)>0).length;
+function setsWord(n){if(!n)return '';const m10=n%10,m100=n%100;return n+' '+(m10===1&&m100!==11?'подход':m10>=2&&m10<=4&&(m100<12||m100>14)?'подхода':'подходов')}
 /* Есть ли в тренировке вписанные цифры (заметка не считается). */
 function hasEntries(d){return !isEmpty(Object.assign({},d,{note:''}))}
 /* Сменить день, если ошиблись: без цифр — подставить упражнения нового дня, с цифрами (силовая → силовая) — оставить как есть. */
@@ -57,18 +60,37 @@ function flushEditor(){
   if(isEmpty(d)){if(S.sessions.has(d.id))removeSession(d.id);editorSave('')}
   else{commitSession(d);if(S.mode!=='db')editorSave(S.mode==='local'?'Сохранено':'')}
 }
-function editorSave(t){const el=document.getElementById('saveState');if(el)el.textContent=t}
+/* Состояние сохранения — значком, чтобы не отнимать место у названия дня: «•» сохраняется, «✓» сохранено. */
+function editorSave(t){const el=document.getElementById('saveState');if(!el)return;const busy=t==='…'||/Сохраняю/.test(t),done=/Сохранено/.test(t);el.textContent=busy?'•':done?'✓':t?'!':'';el.title=t;el.className='save-state'+(busy?' busy':done?' ok':t?' warn':'')}
 
 /* ---------- экран закреплён по размеру видимой области (учитывая клавиатуру) ---------- */
 let lockY=0;
 function lockBody(){lockY=window.scrollY;document.body.style.top=-lockY+'px';document.body.classList.add('locked')}
 function unlockBody(){document.body.classList.remove('locked');document.body.style.top='';window.scrollTo(0,lockY)}
+/* Клавиатура. Экран не двигаем вслед за iOS (из-за этого всё дёргалось): он стоит на месте,
+   а когда клавиатура открыта — становится ниже ровно на её высоту, и iOS незачем сдвигать страницу.
+   Реагируем только на смену размера (открыть/закрыть клавиатуру), не на каждую прокрутку. */
+let fitRaf=0;
 function fitSheet(){
-  const sh=$('#sheet'),vv=window.visualViewport;if(!sh||sh.hidden||!vv)return;
-  sh.style.height=vv.height+'px';sh.style.top=vv.offsetTop+'px';
-  sh.classList.toggle('kb',vv.height<window.innerHeight-120); /* клавиатура открыта: убрать нижний отступ под полоску «домой» */
+  if(fitRaf)return;
+  fitRaf=requestAnimationFrame(()=>{
+    fitRaf=0;const sh=$('#sheet'),vv=window.visualViewport;if(!sh||sh.hidden||!vv)return;
+    if(window.scrollY)window.scrollTo(0,0); /* страница под экраном закреплена, сдвиг iOS только мешает */
+    const kb=vv.height<window.innerHeight-120;
+    sh.classList.toggle('kb',kb);
+    const h=kb?Math.round(vv.height)+'px':'';
+    if(sh.style.height!==h)sh.style.height=h;
+    if(kb)keepFocusVisible();
+  });
 }
-if(window.visualViewport){visualViewport.addEventListener('resize',fitSheet);visualViewport.addEventListener('scroll',fitSheet)}
+if(window.visualViewport)visualViewport.addEventListener('resize',fitSheet);
+/* Поле, в которое пишут, держим видимым, прокручивая только середину экрана — и только если оно спряталось. */
+function keepFocusVisible(){
+  const el=document.activeElement,sc=$('#edScroll');if(!el||!sc||!sc.contains(el))return;
+  const r=el.getBoundingClientRect(),box=sc.getBoundingClientRect(),pad=16;
+  if(r.bottom>box.bottom-pad)sc.scrollTop+=r.bottom-box.bottom+pad;
+  else if(r.top<box.top+pad)sc.scrollTop-=box.top+pad-r.top;
+}
 
 /* ---------- анимации появления и исчезновения ---------- */
 function animateIn(el){
@@ -101,7 +123,7 @@ function openEditor(id){
   }
   (doc.exercises||[]).forEach(e=>{if(!e.id)e.id=uid();e.sets=e.sets||[];e.muscle=muscleOf(e,type);e.bw=isBw(e)});
   (doc.cardio||[]).forEach(c=>{if(!c.id)c.id=uid()});
-  E={doc,dirty:false,timer:null,idx:buildIndex(),armed:false,showOpt:{},menu:null,picker:null,anim:null,busy:false};
+  E={doc,dirty:false,timer:null,idx:buildIndex(),armed:false,showOpt:{},menu:null,picker:null,anim:null,busy:false,fold:new Set()};
   const sh=$('#sheet');
   sh.getAnimations().forEach(x=>x.cancel());sh.style.pointerEvents='';
   sh.className='sheet t-'+type;
@@ -111,7 +133,7 @@ function openEditor(id){
     +'<footer class="ed-foot"><div class="ed-foot-in"><button class="btn done" data-act="done">Готово</button></div></footer>'
     +'<div class="picker" id="picker" hidden></div>';
   renderTitle();renderEditor();
-  lockBody();sh.hidden=false;fitSheet();
+  lockBody();sh.hidden=false;
   if(!reduced())sh.animate([{opacity:0,transform:'translateY(28px)'},{opacity:1,transform:'none'}],{duration:260,easing:EASE});
 }
 function closeEditor(){
@@ -122,7 +144,7 @@ function closeEditor(){
   const blur=document.activeElement;if(blur&&sh.contains(blur))blur.blur();
   sh.style.pointerEvents='none';
   let a=null;
-  const hide=()=>{if(a)a.cancel();sh.hidden=true;sh.innerHTML='';sh.style.height='';sh.style.top='';sh.style.pointerEvents=''};
+  const hide=()=>{if(a)a.cancel();sh.hidden=true;sh.innerHTML='';sh.style.height='';sh.style.pointerEvents='';sh.classList.remove('kb')};
   unlockBody();emit('changed');
   if(reduced())hide();else{a=sh.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(28px)'}],{duration:170,easing:'ease-in',fill:'forwards'});a.finished.then(hide,hide)}
 }
@@ -134,8 +156,13 @@ function exCardHTML(e){
   const bw=isBw(e),menu=E.menu===e.id;
   const prevE=prevBefore(E.idx.ex.get(norm(e.name)),E.doc.week);
   const cmp=compare(bestOf(e),prevE);
-  let h='<article class="ex" data-ex="'+e.id+'"><header class="ex-h"><input class="ex-name" id="exn-'+e.id+'" value="'+esc(e.name)+'" placeholder="Название упражнения" aria-label="Название упражнения">'
+  const fold=E.fold.has(e.id),n=doneSets(e);
+  let h='<article class="ex'+(fold?' folded':'')+'" data-ex="'+e.id+'"><header class="ex-h"><input class="ex-name" id="exn-'+e.id+'" value="'+esc(e.name)+'" placeholder="Название упражнения" aria-label="Название упражнения">'
+    +'<span class="ex-cnt'+(n?'':' zero')+'" id="c-'+e.id+'">'+setsWord(n)+'</span>'
+    +'<button class="icon chev" data-act="fold" aria-label="'+(fold?'Показать подходы':'Свернуть подходы')+'" aria-expanded="'+!fold+'"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5.5 L7 9.5 L11 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'
     +'<button class="icon more'+(menu?' on':'')+'" data-act="menu" aria-label="Действия с упражнением" aria-expanded="'+menu+'">⋯</button></header>';
+  if(fold)return h+'</article>';
+  h+='<div class="ex-body">';
   if(menu)h+='<div class="ex-menu"><button class="tog" data-act="tog-bw" aria-pressed="'+bw+'"><span class="chk" aria-hidden="true"></span>С собственным весом</button><button class="lnk-del" data-act="del-ex">Удалить упражнение</button></div>';
   h+='<p class="ex-meta">'+(bw?'<span class="badge">свой вес</span>':'')+(prevE?'<span>Прошлый раз, нед. '+weekNo(prevE.week)+':</span> <span class="mono">'+setsLine(prevE.ex,prevE.sets)+'</span>':'<span>Первый раз</span>')+'</p>';
   if(bw)h+=P.weight!=null?'<p class="bwline">Ваш вес <span class="mono">'+fmtN(P.weight)+' кг</span> + доп. вес <button data-act="profile">изменить</button></p>':'<p class="bwline miss">Вес тела не указан, пока считается только доп. вес <button data-act="profile">указать</button></p>';
@@ -145,7 +172,7 @@ function exCardHTML(e){
       h+='<div class="set-row" data-set="'+i+'"><span class="set-i">'+(i+1)+'</span><div class="stepper"><button data-act="w-" aria-label="Минус '+fmtN(STEP)+' кг">−</button><input class="w" id="w-'+e.id+'-'+i+'" inputmode="decimal" autocomplete="off" value="'+fmtIn(val)+'" placeholder="0" aria-label="'+(bw?'Дополнительный вес':'Вес')+'"><button data-act="w+" aria-label="Плюс '+fmtN(STEP)+' кг">+</button></div><input class="r" id="r-'+e.id+'-'+i+'" inputmode="numeric" autocomplete="off" value="'+fmtIn(s.r)+'" placeholder="0" aria-label="Повторы"><button class="icon del" data-act="del-set" aria-label="Удалить подход">×</button></div>'});
     h+='</div>';
   }
-  h+='<footer class="ex-f"><button class="add-set" data-act="add-set">+ Подход</button>'+(prevE&&!e.sets.length?'<button class="ed-lnk" data-act="repeat-prev">как в прошлый раз</button>':'')+'<span class="delta '+(cmp?cmp.dir:'')+'" id="d-'+e.id+'">'+(cmp?cmp.text:'')+'</span></footer></article>';
+  h+='<footer class="ex-f"><button class="add-set" data-act="add-set">+ Подход</button>'+(prevE&&!e.sets.length?'<button class="ed-lnk" data-act="repeat-prev">как в прошлый раз</button>':'')+'<span class="delta '+(cmp?cmp.dir:'')+'" id="d-'+e.id+'">'+(cmp?cmp.text:'')+'</span></footer></div></article>';
   return h;
 }
 function cardioCardHTML(c){
@@ -211,6 +238,7 @@ function refreshDelta(item){
   if(E.doc.type==='cardio')c=cardioDelta(item,prevBefore(E.idx.car.get(item.kind||'other'),E.doc.week));
   else c=compare(bestOf(item),prevBefore(E.idx.ex.get(norm(item.name)),E.doc.week));
   el.className='delta '+(c?c.dir:'');el.textContent=c?c.text:'';
+  const cnt=document.getElementById('c-'+item.id);if(cnt&&item.sets){const n=doneSets(item);cnt.textContent=setsWord(n);cnt.classList.toggle('zero',!n)}
 }
 
 const isEditorOpen=()=>!!E;
@@ -240,6 +268,12 @@ function handleEditorClick(act,t){
   if(act==='type-menu'){E.picker='type';E.menu=null;renderPicker();return}
   if(act==='set-type'){const nt=t.dataset.type;E.picker=null;renderPicker();if(nt!==d.type)switchType(nt);return}
   const f=findEx(t);if(!f||!f.item)return;const item=f.item;
+  if(act==='fold'){
+    const body=f.card.querySelector('.ex-body');
+    if(E.fold.has(item.id)){E.fold.delete(item.id);E.anim={sel:'[data-ex="'+item.id+'"] .ex-body'};renderEditor()}
+    else{E.menu=null;animateOut(body,()=>{if(!E)return;E.fold.add(item.id);renderEditor()})}
+    return;
+  }
   if(act==='menu'){E.menu=E.menu===item.id?null:item.id;const open=E.menu===item.id;renderEditor();if(open){const m=$('#edIn').querySelector('[data-ex="'+item.id+'"] .ex-menu');animateIn(m)}return}
   if(act==='del-ex'){E.menu=null;animateOut(f.card,()=>{if(!E)return;f.list.splice(f.list.indexOf(item),1);touch();renderEditor()});return}
   if(act==='tog-bw'){
@@ -282,10 +316,6 @@ document.addEventListener('change',e=>{
   if(t.classList.contains('ex-name')&&f){if(!f.item.sets.length){const l=LIBMAP.get(norm(f.item.name));if(l)f.item.bw=l.bw}renderEditor();return}
   if(t.classList.contains('kind')&&f){f.item.kind=t.value;touch();renderEditor()}
 });
-/* Поле, в которое пишут, не должно прятаться под клавиатурой. */
-document.addEventListener('focusin',e=>{
-  if(!E||!e.target.matches('#edIn input, #edIn textarea'))return;
-  setTimeout(()=>{if(E&&document.activeElement===e.target)e.target.scrollIntoView({block:'center',behavior:reduced()?'auto':'smooth'})},320);
-});
+document.addEventListener('focusin',e=>{if(E&&e.target.matches('#edIn input, #edIn textarea'))setTimeout(keepFocusVisible,350)});
 
 export {openEditor,closeEditor,editorBack,flushEditor,isEditorOpen,refreshEditor,handleEditorClick};

@@ -16,7 +16,9 @@ import {openWeeks,closeWeeks,weeksAction,isWeeksOpen} from './views/weeks.js';
 
 /* ---------- экраны ---------- */
 let rq=0;
-function scheduleRender(){if(rq)return;rq=requestAnimationFrame(()=>{rq=0;render()})}
+/* Пока открыт экран записи, спрятанные под ним экраны не перерисовываем: это заставляло iOS пересчитывать
+   страницу при каждом сохранении, и экран дёргался. Перерисуем при закрытии (оно тоже шлёт 'changed'). */
+function scheduleRender(){if(rq||isEditorOpen())return;rq=requestAnimationFrame(()=>{rq=0;render()})}
 function render(){
   $('#scaleView').hidden=S.view!=='scale';$('#weekView').hidden=S.view!=='week';$('#progressView').hidden=S.view!=='progress';
   if(S.view==='scale')renderScale();else if(S.view==='week')renderWeek();else renderProgress();
